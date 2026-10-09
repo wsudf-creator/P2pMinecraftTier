@@ -31,22 +31,29 @@ int main(int argc, char* argv[])
         udp::endpoint targetEndpoint = *endpoints.begin();
 
         StunClient client(io_context_p2p, 0, targetEndpoint);
-        UdpListener udpListener(io_context_udplistner, 9000, &client.p2pChannel());
+        
 
         std::thread net_thread([&io_context_p2p](){
             io_context_p2p.run();
         });
         if (mode[0] == '1')
         {
+            UdpListener udpListener(io_context_udplistner, 9000, &client.p2pChannel());
             udpListener.start();
             io_context_udplistner.run();
         }
         
+        client.waiting();
         work_guard_p2p.reset();
         io_context_p2p.stop();
 
-        
+        if (mode[0] == '1')
+        {
+            work_guard_udplistener.reset();
+            io_context_udplistner.stop();
+        }
 
+        
         if (net_thread.joinable()) 
         {
             net_thread.join();
@@ -61,23 +68,26 @@ int main(int argc, char* argv[])
 
         StunClient client(io_context_p2p, atoi(argv[1]), targetEndpoint);
 
-        UdpListener udpListener(io_context_udplistner, 9000, &client.p2pChannel());
-
         std::thread net_thread([&io_context_p2p](){
             io_context_p2p.run();
         });
 
         if (mode[0] == '1')
         {
+            UdpListener udpListener(io_context_udplistner, 9000, &client.p2pChannel());
             udpListener.start();
             io_context_udplistner.run();
         }
         
+        client.waiting();
         work_guard_p2p.reset();
         io_context_p2p.stop();
 
-        // work_guard_udplistener.reset();
-        // io_context_udplistner.stop();
+        if (mode[0] == '1')
+        {
+            work_guard_udplistener.reset();
+            io_context_udplistner.stop();
+        }
 
         if (net_thread.joinable()) 
         {

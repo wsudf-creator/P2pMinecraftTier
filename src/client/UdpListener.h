@@ -6,7 +6,7 @@
 
 using boost::asio::ip::udp;
 
-class UdpListener : public std::enable_shared_from_this<UdpListener> 
+class UdpListener
 {
 public:
     UdpListener(boost::asio::io_context& io_context, unsigned short port, std::atomic<std::shared_ptr<P2pChannel>>* channel);

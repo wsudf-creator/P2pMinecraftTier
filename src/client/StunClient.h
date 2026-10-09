@@ -26,6 +26,14 @@ public:
         return currentChannel_;
     }
 
+    void waiting()
+    {
+        while (running_)
+        {
+            
+        }
+    }
+
 private:
     void startReceive();
     void startSend();

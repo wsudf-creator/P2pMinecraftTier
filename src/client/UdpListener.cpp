@@ -22,13 +22,11 @@ UdpListener::UdpListener(boost::asio::io_context& io_context, unsigned short por
 }
 
  void UdpListener::do_receive() 
- {
-    auto self(shared_from_this());
-    
+ {  
     // async_receive_from 每次接收数据时都会填充 remote_endpoint_
     socket_.async_receive_from(
         boost::asio::buffer(recv_buffer_), remote_endpoint_,
-        [this, self](boost::system::error_code ec, std::size_t bytes_recvd) {
+        [this](boost::system::error_code ec, std::size_t bytes_recvd) {
             if (!ec) 
             {
                 // --- 成功收到本地程序 (如 GOST) 发来的数据包 ---

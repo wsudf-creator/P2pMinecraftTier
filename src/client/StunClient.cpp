@@ -207,6 +207,8 @@ void StunClient::startReceive()
             std::cerr << "[startReceive:接收失败]:" << ec.what() << std::endl;
             std::cerr << "[senderIP:Port]:" << senderEndpoint_.address().to_string() 
                                              << std::dec << senderEndpoint_.port() << std::endl;
+        
+        
         }
         startReceive();
     });
@@ -239,7 +241,7 @@ void StunClient::startWaitingSignals()
             
             
             socket_.close();
-            // ioctxPtr_->stop();
+            ioctxPtr_->stop();
         }
     });
 }
