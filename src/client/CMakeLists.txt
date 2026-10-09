@@ -1,0 +1,24 @@
+cmake_minimum_required(VERSION 3.10)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+#声明工程的名称
+project(MCTier LANGUAGES C CXX)
+
+set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
+
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif()
+
+set(C_SRCS ikcp.c)
+set(CXX_SRCS main.cpp Punch.cpp StunClient.cpp P2pChannel.cpp UdpListener.cpp)
+
+add_executable(MCTier ${C_SRCS} ${CXX_SRCS})
+
+if(MSVC)
+    target_compile_options(MCTier PRIVATE /utf-8)
+    find_package(Boost REQUIRED)
+    target_include_directories(MCTier PRIVATE ${Boost_INCLUDE_DIRS})
+endif()
