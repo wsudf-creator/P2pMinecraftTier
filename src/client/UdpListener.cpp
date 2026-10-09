@@ -1,7 +1,7 @@
 #include "UdpListener.h"
 
 
-UdpListener::UdpListener(boost::asio::io_context& io_context, unsigned short port, std::atomic<std::shared_ptr<P2pChannel>>* channel)
+UdpListener::UdpListener(boost::asio::io_context& io_context, uint16_t port, std::atomic<std::shared_ptr<P2pChannel>>* channel)
         : socket_(io_context),
           recv_buffer_(2048),
           channel_(channel)
@@ -18,7 +18,7 @@ UdpListener::UdpListener(boost::asio::io_context& io_context, unsigned short por
     socket_.bind(listen_endpoint);
 
     std::cout << "[UDP Listener] Successfully listening on " 
-                << listen_endpoint.address().to_string() << ":" << listen_endpoint.port() << std::endl;
+                << listen_endpoint.address().to_string() << ":" << std::dec << listen_endpoint.port() << std::endl;
 }
 
  void UdpListener::do_receive() 

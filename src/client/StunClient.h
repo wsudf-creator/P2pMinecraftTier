@@ -52,6 +52,7 @@ private:
     udp::socket socket_;
     boost::asio::signal_set signals_;
     udp::endpoint serverEndpoint_; //stun服务器
+    udp::endpoint gostEndpoint_;
 
     boost::asio::steady_timer timer_;
     bool isResolved_;

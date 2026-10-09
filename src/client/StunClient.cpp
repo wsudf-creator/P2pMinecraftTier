@@ -29,6 +29,7 @@ StunClient::StunClient(boost::asio::io_context& io_context, uint16_t localPort, 
       socket_(io_context, udp::endpoint(udp::v4(), localPort)),
       signals_(io_context),
       serverEndpoint_(boost::asio::ip::make_address(remoteIp), remotePort),
+      gostEndpoint_(boost::asio::ip::make_address("127.0.0.1"), 9001),
       timer_(io_context),
       isResolved_(false),
       holePunchClient_(io_context, localPort)
@@ -58,6 +59,7 @@ StunClient::StunClient(boost::asio::io_context& io_context, uint16_t localPort, 
       socket_(io_context, udp::endpoint(udp::v4(), localPort)),
       signals_(io_context),
       serverEndpoint_(serverEndpoint),
+      gostEndpoint_(boost::asio::ip::make_address("127.0.0.1"), 9001),
       timer_(io_context),
       isResolved_(false),
       holePunchClient_(io_context, localPort)
@@ -180,10 +182,16 @@ void StunClient::startReceive()
             else 
             {
                 char message[2048];
-                int recvBytes = ikcp_recv(kcp_, message, sizeof(message));
-
-                if (recvBytes > 0)
-                {    
+                while (true)
+                {
+                    int recvBytes = ikcp_recv(kcp_, message, sizeof(message));
+                    if (recvBytes <= 0) break;
+                    socket_.async_send_to(boost::asio::buffer(message), gostEndpoint_, [this](boost::system::error_code ec, std::size_t){
+                        if(ec)
+                        {
+                            std::cerr << "[StunClient]:send to GOST failed" << std::endl;
+                        }
+                    });
                     std::string result(message, recvBytes);
                     std::cout << "\n[" << senderEndpoint_ << "]:" << result << std::endl;
                 }
