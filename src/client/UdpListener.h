@@ -22,6 +22,11 @@ public:
     {
         do_receive();
     }
+
+    udp::endpoint& getGostEndpoint_()
+    {
+        return remote_endpoint_;
+    }
     
 
 private:

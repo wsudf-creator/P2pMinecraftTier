@@ -34,9 +34,22 @@ public:
         }
     }
 
+    void setListener(UdpListener* listener)
+    {
+        listener_.store(listener);
+    }
+
+    void setServer(bool val)
+    {
+        isServer_ = val;
+    }
+
+
 private:
     void startReceive();
     void startSend();
+    void startGostResponseListener();
+
     void parseExternalIp();
 
     void parseResponse();
@@ -50,9 +63,13 @@ private:
 private:
     boost::asio::io_context* ioctxPtr_;
     udp::socket socket_;
+    
     boost::asio::signal_set signals_;
     udp::endpoint serverEndpoint_; //stun服务器
-    udp::endpoint gostEndpoint_;
+    udp::endpoint serverGostEndpoint_;
+    udp::socket gostResponseSocket_;
+
+    udp::endpoint clientGostEndpoint_;
 
     boost::asio::steady_timer timer_;
     bool isResolved_;
@@ -74,4 +91,9 @@ private:
     ikcpcb* kcp_;
    
     std::atomic<bool> running_;
+    std::atomic<UdpListener*> listener_;
+    bool isServer_;
+
+    std::vector<char> gostRecvBuffer_;
+    udp::endpoint gostSenderEp_;
 };

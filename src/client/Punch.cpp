@@ -17,7 +17,7 @@ void HolePunchClient::startPunching(udp::socket& socket)
     
     static std::random_device rd;
     static std::mt19937 gen(rd());
-    std::uniform_int_distribution<int> dist(3000, 5000);
+    std::uniform_int_distribution<int> dist(1000, 2000);
 
     int duration_ms = dist(gen);
 

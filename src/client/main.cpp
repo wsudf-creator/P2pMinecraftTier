@@ -31,7 +31,14 @@ int main(int argc, char* argv[])
         udp::endpoint targetEndpoint = *endpoints.begin();
 
         StunClient client(io_context_p2p, 0, targetEndpoint);
-        
+        if (mode[0] == '0')
+        {
+            client.setServer(true);
+        }
+        else
+        {
+            client.setServer(false);
+        }
 
         std::thread net_thread([&io_context_p2p](){
             io_context_p2p.run();
@@ -39,6 +46,7 @@ int main(int argc, char* argv[])
         if (mode[0] == '1')
         {
             UdpListener udpListener(io_context_udplistner, 9000, &client.p2pChannel());
+            client.setListener(&udpListener);
             udpListener.start();
             io_context_udplistner.run();
         }
@@ -67,6 +75,14 @@ int main(int argc, char* argv[])
 
 
         StunClient client(io_context_p2p, atoi(argv[1]), targetEndpoint);
+        if (mode[0] == '0')
+        {
+            client.setServer(true);
+        }
+        else
+        {
+            client.setServer(false);
+        }
 
         std::thread net_thread([&io_context_p2p](){
             io_context_p2p.run();
@@ -75,6 +91,7 @@ int main(int argc, char* argv[])
         if (mode[0] == '1')
         {
             UdpListener udpListener(io_context_udplistner, 9000, &client.p2pChannel());
+            client.setListener(&udpListener);
             udpListener.start();
             io_context_udplistner.run();
         }

@@ -29,7 +29,8 @@ StunClient::StunClient(boost::asio::io_context& io_context, uint16_t localPort, 
       socket_(io_context, udp::endpoint(udp::v4(), localPort)),
       signals_(io_context),
       serverEndpoint_(boost::asio::ip::make_address(remoteIp), remotePort),
-      gostEndpoint_(boost::asio::ip::make_address("127.0.0.1"), 9001),
+      serverGostEndpoint_(boost::asio::ip::make_address("127.0.0.1"), 9001),
+      gostResponseSocket_(io_context, serverGostEndpoint_),
       timer_(io_context),
       isResolved_(false),
       holePunchClient_(io_context, localPort)
@@ -51,6 +52,7 @@ StunClient::StunClient(boost::asio::io_context& io_context, uint16_t localPort, 
 
     startSend();
     startReceive();
+    startGostResponseListener();
     startWaitingSignals();
 }
 
@@ -59,7 +61,8 @@ StunClient::StunClient(boost::asio::io_context& io_context, uint16_t localPort, 
       socket_(io_context, udp::endpoint(udp::v4(), localPort)),
       signals_(io_context),
       serverEndpoint_(serverEndpoint),
-      gostEndpoint_(boost::asio::ip::make_address("127.0.0.1"), 9001),
+      serverGostEndpoint_(boost::asio::ip::make_address("127.0.0.1"), 9001),
+      gostResponseSocket_(io_context, serverGostEndpoint_),
       timer_(io_context),
       isResolved_(false),
       holePunchClient_(io_context, localPort)
@@ -81,6 +84,7 @@ StunClient::StunClient(boost::asio::io_context& io_context, uint16_t localPort, 
 
     startSend();
     startReceive();
+    startGostResponseListener();
     startWaitingSignals();
 }
 
@@ -186,12 +190,25 @@ void StunClient::startReceive()
                 {
                     int recvBytes = ikcp_recv(kcp_, message, sizeof(message));
                     if (recvBytes <= 0) break;
-                    socket_.async_send_to(boost::asio::buffer(message), gostEndpoint_, [this](boost::system::error_code ec, std::size_t){
+                    socket_.async_send_to(boost::asio::buffer(message), serverGostEndpoint_, [this](boost::system::error_code ec, std::size_t){
                         if(ec)
                         {
                             std::cerr << "[StunClient]:send to GOST failed" << std::endl;
                         }
                     });
+
+                    udp::endpoint localGostEndpoint = listener_.load()->getGostEndpoint_();
+                    if (localGostEndpoint.port() != 0 && !localGostEndpoint.address().is_unspecified())
+                    {
+                        std::cout << "[StunClient]Gost client:" << localGostEndpoint.address().to_string() << ":" << std::dec << localGostEndpoint.port() << std::endl;
+                        socket_.async_send_to(boost::asio::buffer(message), localGostEndpoint, [this](boost::system::error_code ec, std::size_t){
+                            if (ec)
+                            {
+                                std::cerr << "[StunClient]:Send back to GOST client failed" << std::endl;
+                            }
+                        });
+                    }
+
                     std::string result(message, recvBytes);
                     std::cout << "\n[" << senderEndpoint_ << "]:" << result << std::endl;
                 }
@@ -250,6 +267,21 @@ void StunClient::startWaitingSignals()
             
             socket_.close();
             ioctxPtr_->stop();
+        }
+    });
+}
+
+void StunClient::startGostResponseListener()
+{
+    gostResponseSocket_.async_receive_from(boost::asio::buffer(gostRecvBuffer_), gostSenderEp_, [this](boost::system::error_code ec, std::size_t bytes_recvd){
+        if (!ec && bytes_recvd > 0)
+        {
+            ikcp_send(kcp_, gostRecvBuffer_.data(), bytes_recvd);
+            ikcp_flush(kcp_);
+        }
+        if (ec != boost::asio::error::operation_aborted) 
+        {
+            startGostResponseListener(); // 保持监听循环
         }
     });
 }
