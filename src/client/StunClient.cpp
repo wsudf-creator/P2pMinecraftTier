@@ -190,23 +190,28 @@ void StunClient::startReceive()
                 {
                     int recvBytes = ikcp_recv(kcp_, message, sizeof(message));
                     if (recvBytes <= 0) break;
-                    socket_.async_send_to(boost::asio::buffer(message), serverGostEndpoint_, [this](boost::system::error_code ec, std::size_t){
-                        if(ec)
-                        {
-                            std::cerr << "[StunClient]:send to GOST failed" << std::endl;
-                        }
-                    });
-
-                    udp::endpoint localGostEndpoint = listener_.load()->getGostEndpoint_();
-                    if (localGostEndpoint.port() != 0 && !localGostEndpoint.address().is_unspecified())
+                    if (isServer_)
                     {
-                        std::cout << "[StunClient]Gost client:" << localGostEndpoint.address().to_string() << ":" << std::dec << localGostEndpoint.port() << std::endl;
-                        socket_.async_send_to(boost::asio::buffer(message), localGostEndpoint, [this](boost::system::error_code ec, std::size_t){
-                            if (ec)
+                        socket_.async_send_to(boost::asio::buffer(message), serverGostEndpoint_, [this](boost::system::error_code ec, std::size_t){
+                            if(ec)
                             {
-                                std::cerr << "[StunClient]:Send back to GOST client failed" << std::endl;
+                                std::cerr << "[StunClient]:send to GOST failed" << std::endl;
                             }
                         });
+                    }
+                    else
+                    {
+                        udp::endpoint localGostEndpoint = listener_.load()->getGostEndpoint_();
+                        if (localGostEndpoint.port() != 0 && !localGostEndpoint.address().is_unspecified())
+                        {
+                            std::cout << "[StunClient]Gost client:" << localGostEndpoint.address().to_string() << ":" << std::dec << localGostEndpoint.port() << std::endl;
+                            socket_.async_send_to(boost::asio::buffer(message), localGostEndpoint, [this](boost::system::error_code ec, std::size_t){
+                                if (ec)
+                                {
+                                    std::cerr << "[StunClient]:Send back to GOST client failed" << std::endl;
+                                }
+                            });
+                        }
                     }
 
                     std::string result(message, recvBytes);
