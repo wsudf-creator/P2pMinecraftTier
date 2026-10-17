@@ -30,8 +30,11 @@ UdpListener::UdpListener(boost::asio::io_context& io_context, uint16_t port, std
             if (!ec) 
             {
                 // --- 成功收到本地程序 (如 GOST) 发来的数据包 ---
+                local_gost_endpoint_ = remote_endpoint_;
                 on_receive(recv_buffer_.data(), bytes_recvd, remote_endpoint_);
-            } else 
+                
+            } 
+            else 
             {
                 // 处理非主动取消的错误
                 if (ec != boost::asio::error::operation_aborted) 
@@ -61,4 +64,11 @@ void UdpListener::on_receive(const char* data, std::size_t length, const udp::en
         {
             std::cerr << "[UdpListener::on_receive]:P2P通道不存在" << std::endl;
         }
+}
+
+void UdpListener::sendBackToGost(const char* message, std::size_t bytes)
+{
+    socket_.async_send_to(boost::asio::buffer(message, bytes), local_gost_endpoint_, [](boost::system::error_code ec, std::size_t){
+
+    });
 }

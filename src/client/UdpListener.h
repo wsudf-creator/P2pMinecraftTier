@@ -27,6 +27,8 @@ public:
     {
         return remote_endpoint_;
     }
+
+    void sendBackToGost(const char* message, std::size_t bytes);
     
 
 private:
@@ -35,6 +37,8 @@ private:
 
     udp::socket socket_;
     udp::endpoint remote_endpoint_;
+    udp::endpoint local_gost_endpoint_;
     std::vector<char> recv_buffer_;
+    std::vector<char> send_buffer_;
     std::atomic<std::shared_ptr<P2pChannel>>* channel_;
 };

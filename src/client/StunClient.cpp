@@ -204,17 +204,17 @@ void StunClient::startReceive()
                     }
                     else
                     {
-                        udp::endpoint localGostEndpoint = listener_.load()->getGostEndpoint_();
-                        if (localGostEndpoint.port() != 0 && !localGostEndpoint.address().is_unspecified())
-                        {
-                            std::cout << "[StunClient]Gost client:" << localGostEndpoint.address().to_string() << ":" << std::dec << localGostEndpoint.port() << std::endl;
-                            socket_.async_send_to(boost::asio::buffer(message), localGostEndpoint, [this](boost::system::error_code ec, std::size_t){
-                                if (ec)
-                                {
-                                    std::cerr << "[StunClient]:Send back to GOST client failed" << std::endl;
-                                }
-                            });
-                        }
+                        // udp::endpoint udpListenerEndpoint = udp::endpoint(boost::asio::ip::make_address("127.0.0.1"), 9000);
+                        std::cout << "[StunClient]:received " << recvBytes << " from peer" << std::endl;
+                        //     // std::cout << "[StunClient]Gost client:" << udpListenerEndpoint.address().to_string() << ":" << std::dec << localGostEndpoint.port() << std::endl;
+                        // socket_.async_send_to(boost::asio::buffer(message), udpListenerEndpoint, [this](boost::system::error_code ec, std::size_t){
+                        //     if (ec)
+                        //     {
+                        //         std::cerr << "[StunClient]:Send back to GOST client failed" << std::endl;
+                        //     }
+                        // });
+                        listener_.load()->sendBackToGost(message, recvBytes);
+                        
                     }
 
                     std::string result(message, recvBytes);
@@ -244,7 +244,7 @@ void StunClient::startReceive()
         
         }
     }
-    else //收到server端gost回传的数据
+    else
     {
         std::istream is(&recvStreambuf_);
 
