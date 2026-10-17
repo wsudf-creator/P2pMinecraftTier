@@ -68,6 +68,7 @@ void UdpListener::on_receive(const char* data, std::size_t length, const udp::en
 
 void UdpListener::sendBackToGost(const char* message, std::size_t bytes)
 {
+    std::cout << "[UdpListener sendBackToGost]" << std::endl;
     socket_.async_send_to(boost::asio::buffer(message, bytes), local_gost_endpoint_, [](boost::system::error_code ec, std::size_t){
 
     });

@@ -196,6 +196,7 @@ void StunClient::startReceive()
                     if (isServer_)
                     {
                         socket_.async_send_to(boost::asio::buffer(message), serverGostEndpoint_, [this](boost::system::error_code ec, std::size_t){
+                            std::cout << "[StunClient]:Server send to serverGost" << std::endl;
                             if(ec)
                             {
                                 std::cerr << "[StunClient]:send to GOST failed" << std::endl;
@@ -254,7 +255,7 @@ void StunClient::startReceive()
             ikcp_flush(kcp_);
         }
     }
-    
+
     startReceive();
     });
 }
