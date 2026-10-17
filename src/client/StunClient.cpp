@@ -30,7 +30,7 @@ StunClient::StunClient(boost::asio::io_context& io_context, uint16_t localPort, 
       signals_(io_context),
       serverEndpoint_(boost::asio::ip::make_address(remoteIp), remotePort),
       serverGostEndpoint_(boost::asio::ip::make_address("127.0.0.1"), 9001),
-      gostResponseSocket_(io_context, serverGostEndpoint_),
+    //   gostResponseSocket_(io_context, serverGostEndpoint_),
       timer_(io_context),
       isResolved_(false),
       holePunchClient_(io_context, localPort)
@@ -46,13 +46,13 @@ StunClient::StunClient(boost::asio::io_context& io_context, uint16_t localPort, 
     kcp_ = nullptr;
     currentChannel_.store(std::make_shared<P2pChannel>(ioctxPtr_, &socket_));
     // currentListener_.store(std::make_shared<UdpListener>(&socket_));
-    gostResponseSocket_.set_option(udp::socket::reuse_address(true));
+    // gostResponseSocket_.set_option(udp::socket::reuse_address(true));
     signals_.add(SIGINT);
     signals_.add(SIGTERM);
 
     startSend();
     startReceive();
-    startGostResponseListener();
+    // startGostResponseListener();
     startWaitingSignals();
 }
 
@@ -62,7 +62,7 @@ StunClient::StunClient(boost::asio::io_context& io_context, uint16_t localPort, 
       signals_(io_context),
       serverEndpoint_(serverEndpoint),
       serverGostEndpoint_(boost::asio::ip::make_address("127.0.0.1"), 9001),
-      gostResponseSocket_(io_context, serverGostEndpoint_),
+    //   gostResponseSocket_(io_context, serverGostEndpoint_),
       timer_(io_context),
       isResolved_(false),
       holePunchClient_(io_context, localPort)
@@ -78,14 +78,14 @@ StunClient::StunClient(boost::asio::io_context& io_context, uint16_t localPort, 
     kcp_ = nullptr;
     currentChannel_.store(std::make_shared<P2pChannel>(ioctxPtr_, &socket_));
     // currentListener_.store(std::make_shared<UdpListener>(&socket_));
-    gostResponseSocket_.set_option(udp::socket::reuse_address(true));
+    // gostResponseSocket_.set_option(udp::socket::reuse_address(true));
 
     signals_.add(SIGINT);
     signals_.add(SIGTERM);
 
     startSend();
     startReceive();
-    startGostResponseListener();
+    // startGostResponseListener();
     startWaitingSignals();
 }
 
@@ -124,6 +124,8 @@ void StunClient::startReceive()
     recvStreambuf_.consume(recvStreambuf_.size());
     socket_.async_receive_from(recvStreambuf_.prepare(2048), senderEndpoint_, 
     [this](boost::system::error_code ec, std::size_t bytesRecvd){  
+    if (senderEndpoint_ != serverGostEndpoint_)
+    {
         recvStreambuf_.commit(bytesRecvd);
         std::istream is(&recvStreambuf_);
         uint8_t type;
@@ -241,6 +243,22 @@ void StunClient::startReceive()
         
         
         }
+    }
+    else //收到server端gost回传的数据
+    {
+        std::istream is(&recvStreambuf_);
+
+        std::vector<char> rawData(
+            (std::istreambuf_iterator<char>(is)), 
+            std::istreambuf_iterator<char>()
+        );
+
+        if (!ec && bytesRecvd > 0)
+        {
+            ikcp_send(kcp_, rawData.data(), bytesRecvd);
+            ikcp_flush(kcp_);
+        }
+    }
         startReceive();
     });
 }
@@ -277,20 +295,20 @@ void StunClient::startWaitingSignals()
     });
 }
 
-void StunClient::startGostResponseListener()
-{
-    gostResponseSocket_.async_receive_from(boost::asio::buffer(gostRecvBuffer_), gostSenderEp_, [this](boost::system::error_code ec, std::size_t bytes_recvd){
-        if (!ec && bytes_recvd > 0)
-        {
-            ikcp_send(kcp_, gostRecvBuffer_.data(), bytes_recvd);
-            ikcp_flush(kcp_);
-        }
-        if (ec != boost::asio::error::operation_aborted) 
-        {
-            startGostResponseListener(); // 保持监听循环
-        }
-    });
-}
+// void StunClient::startGostResponseListener()
+// {
+//     gostResponseSocket_.async_receive_from(boost::asio::buffer(gostRecvBuffer_), gostSenderEp_, [this](boost::system::error_code ec, std::size_t bytes_recvd){
+//         if (!ec && bytes_recvd > 0)
+//         {
+//             ikcp_send(kcp_, gostRecvBuffer_.data(), bytes_recvd);
+//             ikcp_flush(kcp_);
+//         }
+//         if (ec != boost::asio::error::operation_aborted) 
+//         {
+//             startGostResponseListener(); // 保持监听循环
+//         }
+//     });
+// }
 
 void StunClient::parseResponse()
 {

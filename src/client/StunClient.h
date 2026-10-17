@@ -48,7 +48,7 @@ public:
 private:
     void startReceive();
     void startSend();
-    void startGostResponseListener();
+    // void startGostResponseListener();
 
     void parseExternalIp();
 
@@ -67,14 +67,13 @@ private:
     boost::asio::signal_set signals_;
     udp::endpoint serverEndpoint_; //stun服务器
     udp::endpoint serverGostEndpoint_;
-    udp::socket gostResponseSocket_;
+    // udp::socket gostResponseSocket_;
 
     udp::endpoint clientGostEndpoint_;
 
     boost::asio::steady_timer timer_;
     bool isResolved_;
     HolePunchClient holePunchClient_;
-    // UdpChat udpChat_;
     
 
     udp::endpoint senderEndpoint_; //实际收到包的来源
