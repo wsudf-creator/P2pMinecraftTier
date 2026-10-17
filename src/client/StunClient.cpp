@@ -204,15 +204,7 @@ void StunClient::startReceive()
                     }
                     else
                     {
-                        // udp::endpoint udpListenerEndpoint = udp::endpoint(boost::asio::ip::make_address("127.0.0.1"), 9000);
                         std::cout << "[StunClient]:received " << recvBytes << " from peer" << std::endl;
-                        //     // std::cout << "[StunClient]Gost client:" << udpListenerEndpoint.address().to_string() << ":" << std::dec << localGostEndpoint.port() << std::endl;
-                        // socket_.async_send_to(boost::asio::buffer(message), udpListenerEndpoint, [this](boost::system::error_code ec, std::size_t){
-                        //     if (ec)
-                        //     {
-                        //         std::cerr << "[StunClient]:Send back to GOST client failed" << std::endl;
-                        //     }
-                        // });
                         listener_.load()->sendBackToGost(message, recvBytes);
                         
                     }
@@ -241,11 +233,11 @@ void StunClient::startReceive()
             std::cerr << "[senderIP:Port]:" << senderEndpoint_.address().to_string() 
                                              << std::dec << senderEndpoint_.port() << std::endl;
         
-        
         }
     }
-    else
+    else if(isServer_ && senderEndpoint_.address().to_v4() == boost::asio::ip::address_v4::loopback())
     {
+        //服务端gost传回数据
         std::istream is(&recvStreambuf_);
 
         std::vector<char> rawData(
@@ -253,13 +245,17 @@ void StunClient::startReceive()
             std::istreambuf_iterator<char>()
         );
 
+        std::cout << "[StunClient]: server send back to p2p tunnel" << std::endl;
+        std::cout << "content:" << rawData.data() << std::endl;
+
         if (!ec && bytesRecvd > 0)
         {
             ikcp_send(kcp_, rawData.data(), bytesRecvd);
             ikcp_flush(kcp_);
         }
     }
-        startReceive();
+    
+    startReceive();
     });
 }
 
