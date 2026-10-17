@@ -46,7 +46,7 @@ StunClient::StunClient(boost::asio::io_context& io_context, uint16_t localPort, 
     kcp_ = nullptr;
     currentChannel_.store(std::make_shared<P2pChannel>(ioctxPtr_, &socket_));
     // currentListener_.store(std::make_shared<UdpListener>(&socket_));
-
+    gostResponseSocket_.set_option(udp::socket::reuse_address(true));
     signals_.add(SIGINT);
     signals_.add(SIGTERM);
 
@@ -78,6 +78,7 @@ StunClient::StunClient(boost::asio::io_context& io_context, uint16_t localPort, 
     kcp_ = nullptr;
     currentChannel_.store(std::make_shared<P2pChannel>(ioctxPtr_, &socket_));
     // currentListener_.store(std::make_shared<UdpListener>(&socket_));
+    gostResponseSocket_.set_option(udp::socket::reuse_address(true));
 
     signals_.add(SIGINT);
     signals_.add(SIGTERM);
