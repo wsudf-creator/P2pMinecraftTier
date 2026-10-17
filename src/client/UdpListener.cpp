@@ -51,7 +51,7 @@ UdpListener::UdpListener(boost::asio::io_context& io_context, uint16_t port, std
 
 void UdpListener::on_receive(const char* data, std::size_t length, const udp::endpoint& from_ep) 
 {
-        // 在这里将本地收到包 (例如 GOST 投递来的 TCP-over-UDP 流量) 压入你的 KCP 发送队列
+        // 在这里将本地收到包 (例如 GOST 投递来的 TCP-over-UDP 流量) 压入 KCP 发送队列
         std::cout << "[UDP Listener] Recv " << length << " bytes from " << from_ep << std::endl;
         if (channel_->load())
         {

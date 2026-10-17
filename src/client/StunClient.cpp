@@ -124,7 +124,7 @@ void StunClient::startReceive()
     recvStreambuf_.consume(recvStreambuf_.size());
     socket_.async_receive_from(recvStreambuf_.prepare(2048), senderEndpoint_, 
     [this](boost::system::error_code ec, std::size_t bytesRecvd){  
-    if (senderEndpoint_ != serverGostEndpoint_)
+    if (senderEndpoint_.address().to_v4() != boost::asio::ip::address_v4::loopback()) //非服务端gost传回的数据
     {
         recvStreambuf_.commit(bytesRecvd);
         std::istream is(&recvStreambuf_);
