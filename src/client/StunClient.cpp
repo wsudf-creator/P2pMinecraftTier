@@ -222,7 +222,7 @@ void StunClient::onMessage()
     }
     else 
     {
-        char message[2048];
+        char message[65535];
         while (true)
         {
             int recvBytes = ikcp_recv(kcp_, message, sizeof(message));

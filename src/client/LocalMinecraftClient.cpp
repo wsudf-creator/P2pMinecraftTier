@@ -9,13 +9,14 @@ LocalMinecraftClient::LocalMinecraftClient(boost::asio::io_context& io_context, 
 void LocalMinecraftClient::send_to_minecraft(const char* data, std::size_t size)
 {
     auto self(shared_from_this());
-    boost::asio::async_write(socket_, boost::asio::buffer(data, size),
-        [this, self](boost::system::error_code ec, std::size_t /*bytes_transferred*/) {
-            if (ec) 
-            {
-                std::cerr << "[LocalMC] Write to Minecraft failed: " << ec.message() << std::endl;
-            }
-        });
+    // 投递到 socket 绑定的 io_context 线程，保证线程安全
+    boost::asio::post(socket_.get_executor(), [this, self, payload = std::vector<char>(data, data + size)]() mutable {
+        write_queue_.push(std::move(payload));
+        if (!is_writing_) 
+        {
+            start_write();
+        }
+    });
 } 
 
 void LocalMinecraftClient::connect_to_minecraft()
@@ -55,4 +56,35 @@ void LocalMinecraftClient::start_read()
                 std::cerr << "[LocalMC] Connection closed or error: " << ec.message() << std::endl;
             }
         });
-} 
+}
+
+void LocalMinecraftClient::start_write()
+{
+    is_writing_ = true;
+    auto self(shared_from_this());
+
+    boost::asio::async_write(
+        socket_,
+        boost::asio::buffer(write_queue_.front()),
+        [this, self](boost::system::error_code ec, std::size_t /*bytes_transferred*/) {
+            if (!ec) 
+            {
+                write_queue_.pop();
+                if (!write_queue_.empty()) 
+                {
+                    start_write(); // 递归发送下一包
+                } 
+                else 
+                {
+                    is_writing_ = false;
+                }
+            } 
+            else 
+            {
+                std::cerr << "[LocalMC] Write error: " << ec.message() << std::endl;
+                std::queue<std::vector<char>> empty;
+                std::swap(write_queue_, empty); // 清空队列
+                is_writing_ = false;
+            }
+        });
+}

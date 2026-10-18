@@ -3,6 +3,7 @@
 #include <iostream>
 #include <memory>
 #include <array>
+#include <queue>
 #include <boost/asio.hpp>
 #include <functional>
 
@@ -24,10 +25,16 @@ private:
     void start_accept();
    
     void start_read();
+
+    void start_write();
+
     std::function<void(const char*, std::size_t)> kcpSendCallback_;
 
     tcp::acceptor acceptor_;
     tcp::socket socket_;
-    std::array<char, 4096> read_buffer_;
+    std::array<char, 8192> read_buffer_;
+
+    std::queue<std::vector<char>> write_queue_;
+    bool is_writing_ = false;
     bool is_connected_ = false;
 };

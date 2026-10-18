@@ -18,13 +18,13 @@ void LocalMinecraftServer::send_to_game(const char* data, std::size_t size)
     }
     
     auto self(shared_from_this());
-    boost::asio::async_write(socket_, boost::asio::buffer(data, size),
-        [this, self](boost::system::error_code ec, std::size_t /*bytes_transferred*/) {
-            if (ec) 
-            {
-                std::cerr << "[LocalMCServer] Write to game failed: " << ec.message() << std::endl;
-            }
-        });
+    boost::asio::post(socket_.get_executor(), [this, self, payload = std::vector<char>(data, data + size)]() mutable {
+        write_queue_.push(std::move(payload));
+        if (!is_writing_) 
+        {
+            start_write();
+        }
+    });
 }
 
 void LocalMinecraftServer::start_accept()
@@ -65,6 +65,37 @@ void LocalMinecraftServer::start_read()
                 std::cerr << "[LocalMCServer] Game client disconnected: " << ec.message() << std::endl;
                 // 可以选择重新开始等待下一个连接
                 start_accept();
+            }
+        });
+}
+
+void LocalMinecraftServer::start_write()
+{
+    is_writing_ = true;
+    auto self(shared_from_this());
+
+    boost::asio::async_write(
+        socket_,
+        boost::asio::buffer(write_queue_.front()),
+        [this, self](boost::system::error_code ec, std::size_t /*bytes_transferred*/) {
+            if (!ec) 
+            {
+                write_queue_.pop();
+                if (!write_queue_.empty()) 
+                {
+                    start_write();
+                } 
+                else 
+                {
+                    is_writing_ = false;
+                }
+            } 
+            else 
+            {
+                std::cerr << "[LocalMCServer] Write error: " << ec.message() << std::endl;
+                std::queue<std::vector<char>> empty;
+                std::swap(write_queue_, empty);
+                is_writing_ = false;
             }
         });
 }

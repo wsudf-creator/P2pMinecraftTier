@@ -5,6 +5,7 @@
 #include <iostream>
 #include <memory>
 #include <array>
+#include <queue>
 #include <boost/asio.hpp>
 #include <functional>
 
@@ -35,10 +36,15 @@ private:
     void connect_to_minecraft();
 
     void start_read();
+    void start_write();
    
     std::function<void(const char*, std::size_t)> kcpSendCallback_;
 
     tcp::socket socket_;
     tcp::endpoint endpoint_;
-    std::array<char, 4096> read_buffer_;
+    std::array<char, 8192> read_buffer_;
+
+    // 发送队列与状态标志
+    std::queue<std::vector<char>> write_queue_;
+    bool is_writing_ = false;
 };
