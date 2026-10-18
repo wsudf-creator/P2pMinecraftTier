@@ -24,15 +24,13 @@ void disableUdpConnReset(boost::asio::ip::udp::socket& socket)
 #endif
 
 
+
 StunClient::StunClient(boost::asio::io_context& io_context, uint16_t localPort, const std::string& remoteIp, uint16_t remotePort)
     : ioctxPtr_(&io_context), 
       socket_(io_context, udp::endpoint(udp::v4(), localPort)),
       signals_(io_context),
       serverEndpoint_(boost::asio::ip::make_address(remoteIp), remotePort),
-      serverGostEndpoint_(boost::asio::ip::make_address("127.0.0.1"), 9001),
-    //   gostResponseSocket_(io_context, serverGostEndpoint_),
       timer_(io_context),
-      isResolved_(false),
       holePunchClient_(io_context, localPort)
 {
 #ifdef _WIN32
@@ -45,14 +43,12 @@ StunClient::StunClient(boost::asio::io_context& io_context, uint16_t localPort, 
 
     kcp_ = nullptr;
     currentChannel_.store(std::make_shared<P2pChannel>(ioctxPtr_, &socket_));
-    // currentListener_.store(std::make_shared<UdpListener>(&socket_));
-    // gostResponseSocket_.set_option(udp::socket::reuse_address(true));
+
     signals_.add(SIGINT);
     signals_.add(SIGTERM);
 
     startSend();
     startReceive();
-    // startGostResponseListener();
     startWaitingSignals();
 }
 
@@ -61,10 +57,7 @@ StunClient::StunClient(boost::asio::io_context& io_context, uint16_t localPort, 
       socket_(io_context, udp::endpoint(udp::v4(), localPort)),
       signals_(io_context),
       serverEndpoint_(serverEndpoint),
-      serverGostEndpoint_(boost::asio::ip::make_address("127.0.0.1"), 9001),
-    //   gostResponseSocket_(io_context, serverGostEndpoint_),
       timer_(io_context),
-      isResolved_(false),
       holePunchClient_(io_context, localPort)
 {
 
@@ -77,15 +70,12 @@ StunClient::StunClient(boost::asio::io_context& io_context, uint16_t localPort, 
     
     kcp_ = nullptr;
     currentChannel_.store(std::make_shared<P2pChannel>(ioctxPtr_, &socket_));
-    // currentListener_.store(std::make_shared<UdpListener>(&socket_));
-    // gostResponseSocket_.set_option(udp::socket::reuse_address(true));
 
     signals_.add(SIGINT);
     signals_.add(SIGTERM);
 
     startSend();
     startReceive();
-    // startGostResponseListener();
     startWaitingSignals();
 }
 
@@ -124,10 +114,10 @@ void StunClient::startReceive()
     recvStreambuf_.consume(recvStreambuf_.size());
     socket_.async_receive_from(recvStreambuf_.prepare(2048), senderEndpoint_, 
     [this](boost::system::error_code ec, std::size_t bytesRecvd){
-    std::cout << "[Debug] Received packet from: " << senderEndpoint_.address().to_string() 
+
+        std::cout << "[Debug] Received packet from: " << senderEndpoint_.address().to_string() 
         << ":" << senderEndpoint_.port() << std::endl;
-    if (senderEndpoint_.address().to_v4() != boost::asio::ip::address_v4::loopback()) //非服务端gost传回的数据
-    {
+
         recvStreambuf_.commit(bytesRecvd);
         std::istream is(&recvStreambuf_);
         uint8_t type;
@@ -148,74 +138,11 @@ void StunClient::startReceive()
         }
         else if (!ec && type == PUNCHING)
         {
-            if (currentChannel_.load()->peerEndpoint() != senderEndpoint_)
-            {
-                std::cout << "[debug]:对端endpoint发生变更" << std::endl;
-                holePunchClient_.setRemoteEndpoint(senderEndpoint_.address().to_v4().to_uint(), senderEndpoint_.port());
-                currentChannel_.load()->setTargetEndpoint(senderEndpoint_);
-            }
-
-            std::istream is(&recvStreambuf_);
-            std::string msg((std::istreambuf_iterator<char>(is)), 
-                            std::istreambuf_iterator<char>());
-            // std::cout << "[收到punch数据] 来自 " << senderEndpoint_ << " -> 内容:" << msg << std::endl;
-            if (!holePunchClient_.isConnected())
-            {
-                holePunchClient_.setConnection();
-                std::cout << ">>> [成功] P2P 直连通道已打通 <<<\n"; 
-                // socket_.connect(senderEndpoint_);
-            }
-    
+           onPunching();
         }
         else if (!ec && type == MESSAGE)  //kcp数据
         {
-            if (currentChannel_.load()->peerEndpoint() != senderEndpoint_)
-            {
-                std::cout << "[debug]:对端endpoint发生变更" << std::endl;
-                holePunchClient_.setRemoteEndpoint(senderEndpoint_.address().to_v4().to_uint(), senderEndpoint_.port());
-                currentChannel_.load()->setTargetEndpoint(senderEndpoint_);
-            }
-
-            std::istream is(&recvStreambuf_);
-
-            std::vector<char> rawData(
-                (std::istreambuf_iterator<char>(is)), 
-                std::istreambuf_iterator<char>()
-            );
-
-            int kcpRet = ikcp_input(kcp_, rawData.data(), rawData.size());
-            if (kcpRet< 0) 
-            {
-                std::cerr << "[KCP Error] ikcp_input 解析失败，错误码: " << kcpRet << std::endl;
-            }
-            else 
-            {
-                char message[2048];
-                while (true)
-                {
-                    int recvBytes = ikcp_recv(kcp_, message, sizeof(message));
-                    if (recvBytes <= 0) break;
-                    if (isServer_)
-                    {
-                        socket_.async_send_to(boost::asio::buffer(message), serverGostEndpoint_, [this](boost::system::error_code ec, std::size_t){
-                            std::cout << "[StunClient]:Server send to serverGost" << std::endl;
-                            if(ec)
-                            {
-                                std::cerr << "[StunClient]:send to GOST failed" << std::endl;
-                            }
-                        });
-                    }
-                    else
-                    {
-                        std::cout << "[StunClient]:received " << recvBytes << " from peer" << std::endl;
-                        listener_.load()->sendBackToGost(message, recvBytes);
-                        
-                    }
-
-                    std::string result(message, recvBytes);
-                    std::cout << "\n[" << senderEndpoint_ << "]:" << result << std::endl;
-                }
-            }
+            onMessage();
         }
         else if (!ec && type == STOP)
         {
@@ -235,31 +162,79 @@ void StunClient::startReceive()
             std::cerr << "[startReceive:接收失败]:" << ec.what() << std::endl;
             std::cerr << "[senderIP:Port]:" << senderEndpoint_.address().to_string() 
                                              << std::dec << senderEndpoint_.port() << std::endl;
-        
         }
-    }
-    else if(isServer_ && senderEndpoint_.address().to_v4() == boost::asio::ip::address_v4::loopback())
-    {
-        //服务端gost传回数据
-        recvStreambuf_.commit(bytesRecvd);
-        std::istream is(&recvStreambuf_);
-
-        std::vector<char> rawData(
-            (std::istreambuf_iterator<char>(is)), 
-            std::istreambuf_iterator<char>()
-        );
-
-        std::cout << "[StunClient]: server send back to p2p tunnel" << std::endl;
-
-        if (!ec && bytesRecvd > 0)
-        {
-            ikcp_send(kcp_, rawData.data(), bytesRecvd);
-            ikcp_flush(kcp_);
-        }
-    }
-
+    
     startReceive();
     });
+}
+
+void StunClient::onPunching()
+{
+    if (currentChannel_.load()->peerEndpoint() != senderEndpoint_)
+    {
+        std::cout << "[debug]:对端endpoint发生变更" << std::endl;
+        holePunchClient_.setRemoteEndpoint(senderEndpoint_.address().to_v4().to_uint(), senderEndpoint_.port());
+        currentChannel_.load()->setTargetEndpoint(senderEndpoint_);
+    }
+
+    std::istream is(&recvStreambuf_);
+    std::string msg((std::istreambuf_iterator<char>(is)), 
+                    std::istreambuf_iterator<char>());
+    // std::cout << "[收到punch数据] 来自 " << senderEndpoint_ << " -> 内容:" << msg << std::endl;
+    if (!holePunchClient_.isConnected())
+    {
+        holePunchClient_.setConnection();
+        std::cout << ">>> [成功] P2P 直连通道已打通 <<<\n";
+        if (isServer_)
+        {
+            localMClientPtr_ = std::make_shared<LocalMinecraftClient>(*ioctxPtr_, "127.0.0.1", 25565);
+            localMClientPtr_->setKcpCallback(std::bind(&StunClient::sendToP2p, this, std::placeholders::_1, std::placeholders::_2));
+            localMClientPtr_->start();
+        }
+    }
+}
+
+void StunClient::onMessage()
+{
+    if (currentChannel_.load()->peerEndpoint() != senderEndpoint_)
+    {
+        std::cout << "[debug]:对端endpoint发生变更" << std::endl;
+        holePunchClient_.setRemoteEndpoint(senderEndpoint_.address().to_v4().to_uint(), senderEndpoint_.port());
+        currentChannel_.load()->setTargetEndpoint(senderEndpoint_);
+    }
+
+    std::istream is(&recvStreambuf_);
+
+    std::vector<char> rawData(
+        (std::istreambuf_iterator<char>(is)), 
+        std::istreambuf_iterator<char>()
+    );
+
+    int kcpRet = ikcp_input(kcp_, rawData.data(), rawData.size());
+    if (kcpRet< 0) 
+    {
+        std::cerr << "[KCP Error] ikcp_input 解析失败，错误码: " << kcpRet << std::endl;
+    }
+    else 
+    {
+        char message[2048];
+        while (true)
+        {
+            int recvBytes = ikcp_recv(kcp_, message, sizeof(message));
+            if (recvBytes <= 0) break;
+            if (isServer_)
+            {
+                localMClientPtr_->send_to_minecraft(message, recvBytes);
+            }
+            else
+            {
+                std::cout << "[StunClient]:received " << recvBytes << " from peer" << std::endl;
+            }
+
+            std::string result(message, recvBytes);
+            std::cout << "\n[" << senderEndpoint_ << "]:" << result << std::endl;
+        }
+    }
 }
 
 void StunClient::startWaitingSignals()
@@ -294,20 +269,6 @@ void StunClient::startWaitingSignals()
     });
 }
 
-// void StunClient::startGostResponseListener()
-// {
-//     gostResponseSocket_.async_receive_from(boost::asio::buffer(gostRecvBuffer_), gostSenderEp_, [this](boost::system::error_code ec, std::size_t bytes_recvd){
-//         if (!ec && bytes_recvd > 0)
-//         {
-//             ikcp_send(kcp_, gostRecvBuffer_.data(), bytes_recvd);
-//             ikcp_flush(kcp_);
-//         }
-//         if (ec != boost::asio::error::operation_aborted) 
-//         {
-//             startGostResponseListener(); // 保持监听循环
-//         }
-//     });
-// }
 
 void StunClient::parseResponse()
 {
@@ -434,7 +395,6 @@ void StunClient::parseExternalIp() //收到对方的endpoint
 
     if (externalIp32 && externalPort32)
     {
-        isResolved_ = true;
         boost::asio::ip::address_v4 externalIp(externalIp32);
         std::cout << "[穿透目标IP:Port]:" << externalIp.to_string() << ":" << std::dec << static_cast<int>(externalPort32) << std::endl;
 

@@ -43,7 +43,7 @@ void P2pChannel::createKcpConversation()
     std::cout << "kcp session established" << std::endl;
 
     ikcp_nodelay(kcp_, 1, 10, 2, 1); 
-    ikcp_wndsize(kcp_, 128, 128);
+    ikcp_wndsize(kcp_, 256, 256);
     ikcp_setmtu(kcp_, 1350); // 防 IP 分片
 }
 

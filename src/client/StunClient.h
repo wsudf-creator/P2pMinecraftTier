@@ -5,7 +5,7 @@
 
 #include "Punch.h"
 #include "P2pChannel.h"
-#include "UdpListener.h"
+#include "LocalMinecraftClient.h"
 #include <atomic>
 #include <array>
 #include <iostream>
@@ -26,18 +26,6 @@ public:
         return currentChannel_;
     }
 
-    void waiting()
-    {
-        while (running_)
-        {
-            
-        }
-    }
-
-    void setListener(UdpListener* listener)
-    {
-        listener_.store(listener);
-    }
 
     void setServer(bool val)
     {
@@ -59,6 +47,15 @@ private:
     void punching(uint32_t ip, uint16_t port);
 
     void startWaitingSignals();
+
+    void onPunching();
+    void onMessage();
+
+    void sendToP2p(const char* buf, std::size_t bytes)
+    {
+        ikcp_send(kcp_, buf, bytes);
+        ikcp_flush(kcp_);
+    }
     
 private:
     boost::asio::io_context* ioctxPtr_;
@@ -66,13 +63,8 @@ private:
     
     boost::asio::signal_set signals_;
     udp::endpoint serverEndpoint_; //stun服务器
-    udp::endpoint serverGostEndpoint_;
-    // udp::socket gostResponseSocket_;
-
-    udp::endpoint clientGostEndpoint_;
 
     boost::asio::steady_timer timer_;
-    bool isResolved_;
     HolePunchClient holePunchClient_;
     
 
@@ -90,9 +82,8 @@ private:
     ikcpcb* kcp_;
    
     std::atomic<bool> running_;
-    std::atomic<UdpListener*> listener_;
     bool isServer_;
 
-    std::vector<char> gostRecvBuffer_;
-    udp::endpoint gostSenderEp_;
+    std::shared_ptr<LocalMinecraftClient> localMClientPtr_;
+
 };

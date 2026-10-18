@@ -12,9 +12,9 @@ int main(int argc, char* argv[])
     #endif
 
     boost::asio::io_context io_context_p2p;
-    boost::asio::io_context io_context_udplistner;
-    auto work_guard_p2p = boost::asio::make_work_guard(io_context_p2p);
-    auto work_guard_udplistener = boost::asio::make_work_guard(io_context_udplistner);
+    // boost::asio::io_context io_context_udplistner;
+    // auto work_guard_p2p = boost::asio::make_work_guard(io_context_p2p);
+    // auto work_guard_udplistener = boost::asio::make_work_guard(io_context_udplistner);
 
     udp::resolver resolver(io_context_p2p);
 
@@ -31,85 +31,35 @@ int main(int argc, char* argv[])
         udp::endpoint targetEndpoint = *endpoints.begin();
 
         StunClient client(io_context_p2p, 0, targetEndpoint);
-        if (mode[0] == '0')
+        if (mode[0] == '0') //MC server
         {
             client.setServer(true);
         }
-        else
+        else if (mode[0] == '1') //MC client
         {
             client.setServer(false);
         }
 
-        std::thread net_thread([&io_context_p2p](){
-            io_context_p2p.run();
-        });
-        if (mode[0] == '1')
-        {
-            UdpListener udpListener(io_context_udplistner, 9000, &client.p2pChannel());
-            client.setListener(&udpListener);
-            udpListener.start();
-            io_context_udplistner.run();
-        }
-        
-        client.waiting();
-        work_guard_p2p.reset();
-        io_context_p2p.stop();
+        io_context_p2p.run();
 
-        if (mode[0] == '1')
-        {
-            work_guard_udplistener.reset();
-            io_context_udplistner.stop();
-        }
-
-        
-        if (net_thread.joinable()) 
-        {
-            net_thread.join();
-        }
     }
-    else if (argc == 3) // port mode
+    else if (argc == 3) //stunclient mode:0.mc server 1.mc client
     {
-        char* mode = argv[2];
+        char* mode = argv[1];
         auto endpoints = resolver.resolve(udp::v4(), ip, port);
         udp::endpoint targetEndpoint = *endpoints.begin();
 
-
-        StunClient client(io_context_p2p, atoi(argv[1]), targetEndpoint);
-        if (mode[0] == '0')
+        StunClient client(io_context_p2p, atoi(argv[2]), targetEndpoint);
+        if (mode[0] == '0') //MC server
         {
             client.setServer(true);
         }
-        else
+        else if (mode[0] == '1') //MC client
         {
             client.setServer(false);
         }
 
-        std::thread net_thread([&io_context_p2p](){
-            io_context_p2p.run();
-        });
-
-        if (mode[0] == '1')
-        {
-            UdpListener udpListener(io_context_udplistner, 9000, &client.p2pChannel());
-            client.setListener(&udpListener);
-            udpListener.start();
-            io_context_udplistner.run();
-        }
-        
-        client.waiting();
-        work_guard_p2p.reset();
-        io_context_p2p.stop();
-
-        if (mode[0] == '1')
-        {
-            work_guard_udplistener.reset();
-            io_context_udplistner.stop();
-        }
-
-        if (net_thread.joinable()) 
-        {
-            net_thread.join();
-        }
+        io_context_p2p.run();
 
     }
     else

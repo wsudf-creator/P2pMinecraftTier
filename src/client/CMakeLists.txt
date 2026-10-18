@@ -13,7 +13,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 set(C_SRCS ikcp.c)
-set(CXX_SRCS main.cpp Punch.cpp StunClient.cpp P2pChannel.cpp UdpListener.cpp)
+set(CXX_SRCS main.cpp Punch.cpp StunClient.cpp P2pChannel.cpp LocalMinecraftClient.cpp)
 
 add_executable(MCTier ${C_SRCS} ${CXX_SRCS})
 
