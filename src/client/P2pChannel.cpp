@@ -90,7 +90,7 @@ void P2pChannel::sendHeartbeat()
 
 void P2pChannel::startKcpTimer()
 {
-    kcp_timer_.expires_after(std::chrono::milliseconds(10));
+    kcp_timer_.expires_after(std::chrono::milliseconds(3));
     kcp_timer_.async_wait([this](boost::system::error_code ec) {
         if (!ec && kcp_)
         {
