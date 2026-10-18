@@ -235,9 +235,6 @@ void StunClient::onMessage()
             {
                 localMCServerPtr_->send_to_game(message, recvBytes);
             }
-
-            std::string result(message, recvBytes);
-            std::cout << "\n[" << senderEndpoint_ << "]:" << result << std::endl;
         }
     }
 }
