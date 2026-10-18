@@ -43,8 +43,8 @@ void P2pChannel::createKcpConversation()
     std::cout << "kcp session established" << std::endl;
 
     ikcp_nodelay(kcp_, 1, 10, 2, 1); 
-    ikcp_wndsize(kcp_, 256, 256);
-    ikcp_setmtu(kcp_, 1350); // 防 IP 分片
+    ikcp_wndsize(kcp_, 2048, 2048);
+    ikcp_setmtu(kcp_, 1400); // 防 IP 分片
 }
 
     // 发送消息到目标节点
@@ -90,7 +90,7 @@ void P2pChannel::sendHeartbeat()
 
 void P2pChannel::startKcpTimer()
 {
-    kcp_timer_.expires_after(std::chrono::milliseconds(3));
+    kcp_timer_.expires_after(std::chrono::milliseconds(5));
     kcp_timer_.async_wait([this](boost::system::error_code ec) {
         if (!ec && kcp_)
         {
