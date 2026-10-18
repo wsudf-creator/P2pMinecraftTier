@@ -191,6 +191,11 @@ void StunClient::onPunching()
             localMClientPtr_->setKcpCallback(std::bind(&StunClient::sendToP2p, this, std::placeholders::_1, std::placeholders::_2));
             localMClientPtr_->start();
         }
+        else
+        {
+            localMCServerPtr_ = std::make_shared<LocalMinecraftServer>(*ioctxPtr_, 25565, 
+                std::bind(&StunClient::sendToP2p, this, std::placeholders::_1, std::placeholders::_2));
+        }
     }
 }
 
@@ -228,7 +233,7 @@ void StunClient::onMessage()
             }
             else
             {
-                std::cout << "[StunClient]:received " << recvBytes << " from peer" << std::endl;
+                localMCServerPtr_->send_to_game(message, recvBytes);
             }
 
             std::string result(message, recvBytes);

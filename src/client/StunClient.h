@@ -6,6 +6,7 @@
 #include "Punch.h"
 #include "P2pChannel.h"
 #include "LocalMinecraftClient.h"
+#include "LocalMinecraftServer.h"
 #include <atomic>
 #include <array>
 #include <iostream>
@@ -85,5 +86,5 @@ private:
     bool isServer_;
 
     std::shared_ptr<LocalMinecraftClient> localMClientPtr_;
-
+    std::shared_ptr<LocalMinecraftServer> localMCServerPtr_; 
 };
