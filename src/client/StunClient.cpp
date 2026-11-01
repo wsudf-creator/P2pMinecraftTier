@@ -1,6 +1,5 @@
 #include "StunClient.h"
 
-
 #include <iomanip>
 #include <ostream>
 #include <random>
@@ -115,8 +114,8 @@ void StunClient::startReceive()
     socket_.async_receive_from(recvStreambuf_.prepare(2048), senderEndpoint_, 
     [this](boost::system::error_code ec, std::size_t bytesRecvd){
 
-        std::cout << "[Debug] Received packet from: " << senderEndpoint_.address().to_string() 
-        << ":" << senderEndpoint_.port() << std::endl;
+        // std::cout << "[Debug] Received packet from: " << senderEndpoint_.address().to_string() 
+        // << ":" << senderEndpoint_.port() << std::endl;
 
         recvStreambuf_.commit(bytesRecvd);
         std::istream is(&recvStreambuf_);
@@ -227,6 +226,7 @@ void StunClient::onMessage()
             // 发现新玩家加入！创建一个新会话并绑定专属 TCP 连接
             auto new_session = std::make_shared<PlayerSession>(*ioctxPtr_, senderEndpoint_, "127.0.0.1", 25565, send_lambda);
             new_session->start();
+            new_session->startKcpTimer();
             sessions_[senderEndpoint_] = new_session;
             it = sessions_.find(senderEndpoint_);
             std::cout << "[Host] New player session created for: " << senderEndpoint_.address().to_string() << std::endl;
@@ -423,7 +423,6 @@ void StunClient::parseExternalIp() //收到对方的endpoint
             currentChannel_.load()->setConv(1);
             currentChannel_.load()->createKcpConversation();
             
-
             udp::endpoint target(boost::asio::ip::address(externalIp), externalPort32);
 
             kcp_ = currentChannel_.load()->kcp();

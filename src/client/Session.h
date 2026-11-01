@@ -36,8 +36,36 @@ public:
     void handle_incoming_p2p(const char* data, std::size_t size);
 
     // 定时器驱动：定期调用 ikcp_update
-    void update(IUINT32 current_ms) {
+    void update(IUINT32 current_ms) 
+    {
         ikcp_update(kcp_, current_ms);
+    }
+
+    void startKcpTimer()
+    {
+        kcp_timer_.expires_after(std::chrono::milliseconds(5));
+        kcp_timer_.async_wait([this](boost::system::error_code ec) {
+            if (!ec && kcp_)
+            {
+                // 获取当前毫秒级时间戳驱动 KCP 状态机
+                IUINT32 current_ms = getCurrentTimestampMs();
+
+                ikcp_update(kcp_, current_ms);
+
+                // 递归循环定时器
+                startKcpTimer();
+            }       
+        });
+    }
+
+    static uint32_t getCurrentTimestampMs() 
+    {
+        auto now = std::chrono::steady_clock::now();
+        auto duration = now.time_since_epoch();
+        // 转换为毫秒并强转为 32 位无符号整数
+        return static_cast<uint32_t>(
+            std::chrono::duration_cast<std::chrono::milliseconds>(duration).count()
+        );
     }
 
     udp::endpoint get_client_endpoint() const { return client_endpoint_; }
@@ -114,6 +142,7 @@ private:
     tcp::socket tcp_socket_;
     tcp::endpoint mc_endpoint_;
     ikcpcb* kcp_ = nullptr; 
+    boost::asio::steady_timer kcp_timer_;
     
     std::array<char, 8192> tcp_read_buf_;
     std::queue<std::vector<char>> write_queue_;

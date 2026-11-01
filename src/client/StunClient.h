@@ -5,7 +5,7 @@
 
 #include "Punch.h"
 #include "P2pChannel.h"
-#include "LocalMinecraftClient.h"
+// #include "LocalMinecraftClient.h"
 #include "LocalMinecraftServer.h"
 #include "Session.h"
 
@@ -87,7 +87,7 @@ private:
     std::atomic<bool> running_;
     bool isServer_;
 
-    std::shared_ptr<LocalMinecraftClient> localMClientPtr_;
+    // std::shared_ptr<LocalMinecraftClient> localMClientPtr_;
     std::shared_ptr<LocalMinecraftServer> localMCServerPtr_; 
 
     std::unordered_map<udp::endpoint, std::shared_ptr<PlayerSession>, EndpointHash> sessions_;

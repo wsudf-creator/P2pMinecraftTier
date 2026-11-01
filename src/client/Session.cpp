@@ -2,7 +2,7 @@
 
 PlayerSession::PlayerSession(boost::asio::io_context& io_context, udp::endpoint client_ep, const std::string& mc_host, short mc_port, SendCallback cb)
         : io_context_(io_context), client_endpoint_(client_ep), 
-          tcp_socket_(io_context), mc_endpoint_(boost::asio::ip::make_address(mc_host), mc_port), send_callback_(std::move(cb))
+          tcp_socket_(io_context), mc_endpoint_(boost::asio::ip::make_address(mc_host), mc_port), send_callback_(std::move(cb)), kcp_timer_(io_context)
 {
 
     // 初始化该玩家专属的 KCP (假设 user_id 为 1)
