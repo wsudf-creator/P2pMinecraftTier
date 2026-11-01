@@ -1,3 +1,5 @@
+//TODO: 1.session kcp回调 2.p2p消息格式
+
 #include "StunClient.h"
 
 #ifdef _WIN32

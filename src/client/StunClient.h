@@ -7,8 +7,11 @@
 #include "P2pChannel.h"
 #include "LocalMinecraftClient.h"
 #include "LocalMinecraftServer.h"
+#include "Session.h"
+
 #include <atomic>
 #include <array>
+#include <unordered_map>
 #include <iostream>
 #include <boost/asio.hpp>
 
@@ -77,14 +80,15 @@ private:
     std::array<uint8_t, 12> currentTransId_;  
 
     std::atomic<std::shared_ptr<P2pChannel>> currentChannel_;
-    // std::atomic<std::shared_ptr<UdpListener>> currentListener_;
 
     IUINT32 conv_;
-    ikcpcb* kcp_;
+    ikcpcb* kcp_; // kcp for client mode;
    
     std::atomic<bool> running_;
     bool isServer_;
 
     std::shared_ptr<LocalMinecraftClient> localMClientPtr_;
     std::shared_ptr<LocalMinecraftServer> localMCServerPtr_; 
+
+    std::unordered_map<udp::endpoint, std::shared_ptr<PlayerSession>, EndpointHash> sessions_;
 };

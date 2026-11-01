@@ -170,42 +170,42 @@ void StunClient::startReceive()
 
 void StunClient::onPunching()
 {
-    if (currentChannel_.load()->peerEndpoint() != senderEndpoint_)
+    if (!isServer_ && currentChannel_.load()->peerEndpoint() != senderEndpoint_)
     {
         std::cout << "[debug]:对端endpoint发生变更" << std::endl;
         holePunchClient_.setRemoteEndpoint(senderEndpoint_.address().to_v4().to_uint(), senderEndpoint_.port());
-        currentChannel_.load()->setTargetEndpoint(senderEndpoint_);
+        // currentChannel_.load()->setTargetEndpoint(senderEndpoint_);
     }
 
     std::istream is(&recvStreambuf_);
     std::string msg((std::istreambuf_iterator<char>(is)), 
                     std::istreambuf_iterator<char>());
     // std::cout << "[收到punch数据] 来自 " << senderEndpoint_ << " -> 内容:" << msg << std::endl;
-    if (!holePunchClient_.isConnected())
+    if (!isServer_ &&  !holePunchClient_.isConnected())
     {
         holePunchClient_.setConnection();
         std::cout << ">>> [成功] P2P 直连通道已打通 <<<\n";
-        if (isServer_)
-        {
-            localMClientPtr_ = std::make_shared<LocalMinecraftClient>(*ioctxPtr_, "127.0.0.1", 25565);
-            localMClientPtr_->setKcpCallback(std::bind(&StunClient::sendToP2p, this, std::placeholders::_1, std::placeholders::_2));
-            localMClientPtr_->start();
-        }
-        else
-        {
-            localMCServerPtr_ = std::make_shared<LocalMinecraftServer>(*ioctxPtr_, 25565, 
-                std::bind(&StunClient::sendToP2p, this, std::placeholders::_1, std::placeholders::_2));
-        }
+        // if (isServer_)
+        // {
+        //     localMClientPtr_ = std::make_shared<LocalMinecraftClient>(*ioctxPtr_, "127.0.0.1", 25565);
+        //     localMClientPtr_->setKcpCallback(std::bind(&StunClient::sendToP2p, this, std::placeholders::_1, std::placeholders::_2));
+        //     localMClientPtr_->start();
+        // }
+        // else
+        // {
+        localMCServerPtr_ = std::make_shared<LocalMinecraftServer>(*ioctxPtr_, 25565, 
+        std::bind(&StunClient::sendToP2p, this, std::placeholders::_1, std::placeholders::_2));
+        // }
     }
 }
 
 void StunClient::onMessage()
 {
-    if (currentChannel_.load()->peerEndpoint() != senderEndpoint_)
+    if (!isServer_ && currentChannel_.load()->peerEndpoint() != senderEndpoint_)
     {
         std::cout << "[debug]:对端endpoint发生变更" << std::endl;
         holePunchClient_.setRemoteEndpoint(senderEndpoint_.address().to_v4().to_uint(), senderEndpoint_.port());
-        currentChannel_.load()->setTargetEndpoint(senderEndpoint_);
+        // currentChannel_.load()->setTargetEndpoint(senderEndpoint_);
     }
 
     std::istream is(&recvStreambuf_);
@@ -214,26 +214,44 @@ void StunClient::onMessage()
         (std::istreambuf_iterator<char>(is)), 
         std::istreambuf_iterator<char>()
     );
-
-    int kcpRet = ikcp_input(kcp_, rawData.data(), rawData.size());
-    if (kcpRet< 0) 
+    if (isServer_)
     {
-        std::cerr << "[KCP Error] ikcp_input 解析失败，错误码: " << kcpRet << std::endl;
-    }
-    else 
-    {
-        char message[65535];
-        while (true)
+        auto it = sessions_.find(senderEndpoint_);
+        if (it == sessions_.end()) 
         {
-            int recvBytes = ikcp_recv(kcp_, message, sizeof(message));
-            if (recvBytes <= 0) break;
-            if (isServer_)
+            auto send_lambda = [this](const udp::endpoint& target_ep, const char* buf, std::size_t len) {
+                // 【核心统一发送点】外层的全局 socket 在这里负责把包发给对应的玩家
+                socket_.async_send_to(boost::asio::buffer(buf, len), target_ep, 
+                    [](boost::system::error_code, std::size_t){});
+            };
+            // 发现新玩家加入！创建一个新会话并绑定专属 TCP 连接
+            auto new_session = std::make_shared<PlayerSession>(*ioctxPtr_, senderEndpoint_, "127.0.0.1", 25565, send_lambda);
+            new_session->start();
+            sessions_[senderEndpoint_] = new_session;
+            it = sessions_.find(senderEndpoint_);
+            std::cout << "[Host] New player session created for: " << senderEndpoint_.address().to_string() << std::endl;
+        }
+
+        // 将数据分发给对应玩家的 KCP 会话
+        it->second->handle_incoming_p2p(rawData.data(), rawData.size());
+    }
+    else
+    {
+        int kcpRet = ikcp_input(kcp_, rawData.data(), rawData.size());
+        if (kcpRet< 0) 
+        {
+            std::cerr << "[KCP Error] ikcp_input 解析失败，错误码: " << kcpRet << std::endl;
+        }
+        else 
+        {
+            char message[65535];
+            while (true)
             {
-                localMClientPtr_->send_to_minecraft(message, recvBytes);
-            }
-            else
-            {
+                int recvBytes = ikcp_recv(kcp_, message, sizeof(message));
+                if (recvBytes <= 0) break;
+
                 localMCServerPtr_->send_to_game(message, recvBytes);
+                
             }
         }
     }
@@ -400,17 +418,20 @@ void StunClient::parseExternalIp() //收到对方的endpoint
         boost::asio::ip::address_v4 externalIp(externalIp32);
         std::cout << "[穿透目标IP:Port]:" << externalIp.to_string() << ":" << std::dec << static_cast<int>(externalPort32) << std::endl;
 
-        currentChannel_.load()->setConv(conv);
-        currentChannel_.load()->createKcpConversation();
-        
+        if (!isServer_)
+        {
+            currentChannel_.load()->setConv(1);
+            currentChannel_.load()->createKcpConversation();
+            
 
-        udp::endpoint target(boost::asio::ip::address(externalIp), externalPort32);
+            udp::endpoint target(boost::asio::ip::address(externalIp), externalPort32);
 
-        kcp_ = currentChannel_.load()->kcp();
-        std::cout << "[kcp conv]:" << std::hex << conv << std::endl;
+            kcp_ = currentChannel_.load()->kcp();
+            std::cout << "[kcp conv]:" << std::hex << conv << std::endl;
 
-        currentChannel_.load()->setTargetEndpoint(target);
-        currentChannel_.load()->startKcpTimer();
+            currentChannel_.load()->setTargetEndpoint(target);
+            currentChannel_.load()->startKcpTimer();
+        }
 
         //开始punch
         punching(externalIp32, externalPort32);
