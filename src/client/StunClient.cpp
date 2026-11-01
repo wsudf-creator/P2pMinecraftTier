@@ -237,10 +237,15 @@ void StunClient::onMessage()
     }
     else
     {
+        if (rawData.size() < 24)
+        {
+            return;
+        }
         int kcpRet = ikcp_input(kcp_, rawData.data(), rawData.size());
         if (kcpRet< 0) 
         {
             std::cerr << "[KCP Error] ikcp_input 解析失败，错误码: " << kcpRet << std::endl;
+            std::cerr << senderEndpoint_.address().to_string() << std::endl;
         }
         else 
         {

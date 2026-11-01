@@ -46,6 +46,10 @@ void PlayerSession::start()
 
 void PlayerSession::handle_incoming_p2p(const char* data, std::size_t size)
 {
+    if (size < 24)
+    {
+        return ;
+    }
     ikcp_input(kcp_, data, size);
     
     // 循环读干 KCP 缓冲区，写入专属的本地 TCP
