@@ -14,7 +14,7 @@ PlayerSession::PlayerSession(boost::asio::io_context& io_context, udp::endpoint 
         sendBuf[0] = static_cast<char>(0xdf);
         std::memcpy(sendBuf.data() + 1, buf, len);
 
-        session->send_p2p_packet(sendBuf.data(), len);
+        session->send_p2p_packet(sendBuf.data(), sendBuf.size());
         return 0;
     };
     ikcp_setmtu(kcp_, 1400);
