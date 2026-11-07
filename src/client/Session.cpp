@@ -20,6 +20,8 @@ PlayerSession::PlayerSession(boost::asio::io_context& io_context, udp::endpoint 
     ikcp_setmtu(kcp_, 1400);
     ikcp_wndsize(kcp_, 2048, 2048);
     ikcp_nodelay(kcp_, 1, 10, 2, 1);
+
+    startKcpTimer();
 }
 
 PlayerSession::~PlayerSession()
@@ -35,6 +37,11 @@ void PlayerSession::start()
         if (!ec) 
         {
             std::cout << "[Session] Connected to local MC for client: " << client_endpoint_.address().to_string() << std::endl;
+            is_tcp_connected_ = true;
+                
+            //TCP 连上后，把期间积压的包一次性处理掉
+            flush_pending_packets();
+            
             start_read_tcp();
         } 
         else 
@@ -60,7 +67,16 @@ void PlayerSession::handle_incoming_p2p(const char* data, std::size_t size)
     {
         int hr = ikcp_recv(kcp_, kcp_buf, sizeof(kcp_buf));
         if (hr <= 0) break;
-        send_to_tcp(kcp_buf, hr);
+
+        if (!is_tcp_connected_) 
+        {
+            // 如果 TCP 还没握手成功，先缓存起来！
+            pending_packets_.emplace_back(kcp_buf, kcp_buf + hr);
+        }
+        else
+        {
+            send_to_tcp(kcp_buf, hr);
+        }
     }
 }
 

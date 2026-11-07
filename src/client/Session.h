@@ -137,6 +137,18 @@ private:
             });
     }
 
+    void flush_pending_packets() 
+    {
+        for (const auto& packet : pending_packets_) 
+        {
+            send_to_tcp(packet.data(), packet.size());
+        }
+        pending_packets_.clear();
+    }
+
+    bool is_tcp_connected_ = false;
+    std::vector<std::vector<char>> pending_packets_; // 缓存连接建立前的首
+
     boost::asio::io_context& io_context_;
     udp::endpoint client_endpoint_;
     tcp::socket tcp_socket_;
