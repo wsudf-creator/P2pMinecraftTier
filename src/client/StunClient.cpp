@@ -173,7 +173,7 @@ void StunClient::onPunching()
     {
         std::cout << "[debug]:对端endpoint发生变更" << std::endl;
         holePunchClient_.setRemoteEndpoint(senderEndpoint_.address().to_v4().to_uint(), senderEndpoint_.port());
-        // currentChannel_.load()->setTargetEndpoint(senderEndpoint_);
+        currentChannel_.load()->setTargetEndpoint(senderEndpoint_);
     }
 
     std::istream is(&recvStreambuf_);
@@ -204,7 +204,7 @@ void StunClient::onMessage()
     {
         std::cout << "[debug]:对端endpoint发生变更" << std::endl;
         holePunchClient_.setRemoteEndpoint(senderEndpoint_.address().to_v4().to_uint(), senderEndpoint_.port());
-        // currentChannel_.load()->setTargetEndpoint(senderEndpoint_);
+        currentChannel_.load()->setTargetEndpoint(senderEndpoint_);
     }
 
     std::istream is(&recvStreambuf_);
@@ -213,8 +213,11 @@ void StunClient::onMessage()
         (std::istreambuf_iterator<char>(is)), 
         std::istreambuf_iterator<char>()
     );
-    if (isServer_)
+    if (isServer_) //host
     {
+        uint8_t msgType;
+        is.read(reinterpret_cast<char*>(&msgType), 1); // 消费掉前面遗留的 type 字节
+        
         auto it = sessions_.find(senderEndpoint_);
         if (it == sessions_.end()) 
         {
@@ -222,6 +225,7 @@ void StunClient::onMessage()
                 // 【核心统一发送点】外层的全局 socket 在这里负责把包发给对应的玩家
                 socket_.async_send_to(boost::asio::buffer(buf, len), target_ep, 
                     [](boost::system::error_code, std::size_t){});
+                
             };
             // 发现新玩家加入！创建一个新会话并绑定专属 TCP 连接
             auto new_session = std::make_shared<PlayerSession>(*ioctxPtr_, senderEndpoint_, "127.0.0.1", 25565, send_lambda);
@@ -235,17 +239,24 @@ void StunClient::onMessage()
         // 将数据分发给对应玩家的 KCP 会话
         it->second->handle_incoming_p2p(rawData.data(), rawData.size());
     }
-    else
+    else //not host
     {
+        uint8_t msgType;
+        is.read(reinterpret_cast<char*>(&msgType), 1); // 消费掉前面遗留的 type 字节
+
         if (rawData.size() < 24)
         {
             return;
         }
         int kcpRet = ikcp_input(kcp_, rawData.data(), rawData.size());
+        if (!kcp_)
+        {
+            std::cout << "[client]: local kcp is nullptr" << std::endl;
+        }
         if (kcpRet< 0) 
         {
             std::cerr << "[KCP Error] ikcp_input 解析失败，错误码: " << kcpRet << std::endl;
-            std::cerr << senderEndpoint_.address().to_string() << std::endl;
+            std::cerr << "[KCP Error] IP:" << senderEndpoint_.address().to_string() << std::endl;
         }
         else 
         {
@@ -256,7 +267,6 @@ void StunClient::onMessage()
                 if (recvBytes <= 0) break;
 
                 localMCServerPtr_->send_to_game(message, recvBytes);
-                
             }
         }
     }
@@ -423,7 +433,7 @@ void StunClient::parseExternalIp() //收到对方的endpoint
         boost::asio::ip::address_v4 externalIp(externalIp32);
         std::cout << "[穿透目标IP:Port]:" << externalIp.to_string() << ":" << std::dec << static_cast<int>(externalPort32) << std::endl;
 
-        if (!isServer_)
+        if (!isServer_) //for not host
         {
             currentChannel_.load()->setConv(1);
             currentChannel_.load()->createKcpConversation();
@@ -431,7 +441,7 @@ void StunClient::parseExternalIp() //收到对方的endpoint
             udp::endpoint target(boost::asio::ip::address(externalIp), externalPort32);
 
             kcp_ = currentChannel_.load()->kcp();
-            std::cout << "[kcp conv]:" << std::hex << conv << std::endl;
+            // std::cout << "[kcp conv]:" << std::hex << conv << std::endl;
 
             currentChannel_.load()->setTargetEndpoint(target);
             currentChannel_.load()->startKcpTimer();

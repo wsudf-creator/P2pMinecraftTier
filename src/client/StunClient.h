@@ -81,7 +81,7 @@ private:
 
     std::atomic<std::shared_ptr<P2pChannel>> currentChannel_;
 
-    IUINT32 conv_;
+    // IUINT32 conv_;
     ikcpcb* kcp_; // kcp for client mode;
    
     std::atomic<bool> running_;
