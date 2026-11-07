@@ -43,7 +43,7 @@ public:
 
     void startKcpTimer()
     {
-        kcp_timer_.expires_after(std::chrono::milliseconds(5));
+        kcp_timer_.expires_after(std::chrono::milliseconds(10));
         kcp_timer_.async_wait([this](boost::system::error_code ec) {
             if (!ec && kcp_)
             {

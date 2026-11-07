@@ -9,12 +9,18 @@ int udpOutputCallback(const char* buf, int len, ikcpcb* kcp, void* user)
     sendBuf[0] = static_cast<char>(0xdf);
     std::memcpy(sendBuf.data() + 1, buf, len);
 
+    int size = sendBuf.size();
+
     client->socket()->async_send_to(
         boost::asio::buffer(sendBuf), client->peerEndpoint(),
-        [](const boost::system::error_code& ec, std::size_t){
+        [size](const boost::system::error_code& ec, std::size_t){
             if (ec) 
             {
                 std::cerr << "\n[udpOutputCallback]发送失败: " << ec.message() << "\n> " << std::flush;
+            }
+            else
+            {
+                std::cout << "[client udpOutputCallback]:sending " << size << " via Udp(Header 0xdf added)" << std::endl;
             }
         }
     );
@@ -90,7 +96,7 @@ void P2pChannel::sendHeartbeat()
 
 void P2pChannel::startKcpTimer()
 {
-    kcp_timer_.expires_after(std::chrono::milliseconds(5));
+    kcp_timer_.expires_after(std::chrono::milliseconds(10));
     kcp_timer_.async_wait([this](boost::system::error_code ec) {
         if (!ec && kcp_)
         {

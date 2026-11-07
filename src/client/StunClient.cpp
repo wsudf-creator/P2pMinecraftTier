@@ -141,6 +141,10 @@ void StunClient::startReceive()
         }
         else if (!ec && type == MESSAGE)  //kcp数据
         {
+            if (isServer_)
+            {
+                std::cout << "[Host] Received MESSAGE from client, feeding to KCP..." << std::endl;
+            }
             onMessage();
         }
         else if (!ec && type == STOP)
@@ -176,9 +180,6 @@ void StunClient::onPunching()
         currentChannel_.load()->setTargetEndpoint(senderEndpoint_);
     }
 
-    std::istream is(&recvStreambuf_);
-    std::string msg((std::istreambuf_iterator<char>(is)), 
-                    std::istreambuf_iterator<char>());
     // std::cout << "[收到punch数据] 来自 " << senderEndpoint_ << " -> 内容:" << msg << std::endl;
     if (!isServer_ &&  !holePunchClient_.isConnected())
     {

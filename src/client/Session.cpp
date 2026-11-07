@@ -11,7 +11,7 @@ PlayerSession::PlayerSession(boost::asio::io_context& io_context, udp::endpoint 
         auto* session = static_cast<PlayerSession*>(user);
 
         std::vector<char> sendBuf(len + 1);
-        sendBuf[0] = static_cast<char>(0xdf);
+        sendBuf[0] = static_cast<char>(0xdf); //Message head
         std::memcpy(sendBuf.data() + 1, buf, len);
 
         session->send_p2p_packet(sendBuf.data(), sendBuf.size());
@@ -51,6 +51,8 @@ void PlayerSession::handle_incoming_p2p(const char* data, std::size_t size)
         return ;
     }
     ikcp_input(kcp_, data, size);
+
+    std::cout << "[Host]: KCP decrypted " << size << " bytes, writing to local MC..." << std::endl;
     
     // 循环读干 KCP 缓冲区，写入专属的本地 TCP
     char kcp_buf[65535];
