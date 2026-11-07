@@ -209,14 +209,16 @@ void StunClient::onMessage()
 
     std::istream is(&recvStreambuf_);
 
-    std::vector<char> rawData(
-        (std::istreambuf_iterator<char>(is)), 
-        std::istreambuf_iterator<char>()
-    );
+   
     if (isServer_) //host
     {
         uint8_t msgType;
         is.read(reinterpret_cast<char*>(&msgType), 1); // 消费掉前面遗留的 type 字节
+
+        std::vector<char> rawData(
+            (std::istreambuf_iterator<char>(is)), 
+            std::istreambuf_iterator<char>()
+        );
         
         auto it = sessions_.find(senderEndpoint_);
         if (it == sessions_.end()) 
@@ -243,6 +245,11 @@ void StunClient::onMessage()
     {
         uint8_t msgType;
         is.read(reinterpret_cast<char*>(&msgType), 1); // 消费掉前面遗留的 type 字节
+
+         std::vector<char> rawData(
+            (std::istreambuf_iterator<char>(is)), 
+            std::istreambuf_iterator<char>()
+        );
 
         if (rawData.size() < 24)
         {
