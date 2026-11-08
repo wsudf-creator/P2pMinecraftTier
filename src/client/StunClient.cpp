@@ -213,8 +213,8 @@ void StunClient::onMessage()
    
     if (isServer_) //host
     {
-        uint8_t msgType;
-        is.read(reinterpret_cast<char*>(&msgType), 1); // 消费掉前面遗留的 type 字节
+        // uint8_t msgType;
+        // is.read(reinterpret_cast<char*>(&msgType), 1); // 消费掉前面遗留的 type 字节
 
         std::vector<char> rawData(
             (std::istreambuf_iterator<char>(is)), 
@@ -243,8 +243,8 @@ void StunClient::onMessage()
     }
     else //not host
     {
-        uint8_t msgType;
-        is.read(reinterpret_cast<char*>(&msgType), 1); // 消费掉前面遗留的 type 字节
+        // uint8_t msgType;
+        // is.read(reinterpret_cast<char*>(&msgType), 1); // 消费掉前面遗留的 type 字节
 
          std::vector<char> rawData(
             (std::istreambuf_iterator<char>(is)), 
