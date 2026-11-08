@@ -233,7 +233,6 @@ void StunClient::onMessage()
             // 发现新玩家加入！创建一个新会话并绑定专属 TCP 连接
             auto new_session = std::make_shared<PlayerSession>(*ioctxPtr_, senderEndpoint_, "127.0.0.1", 25565, send_lambda);
             new_session->start();
-            new_session->startKcpTimer();
             sessions_[senderEndpoint_] = new_session;
             it = sessions_.find(senderEndpoint_);
             std::cout << "[Host] New player session created for: " << senderEndpoint_.address().to_string() << std::endl;

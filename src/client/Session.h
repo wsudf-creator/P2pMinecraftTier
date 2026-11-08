@@ -89,6 +89,7 @@ private:
                 if (!ec) 
                 {
                     // 从本地 MC 读到数据，压入该玩家的 KCP 发给远端玩家
+                    std::cout << "[Session] 从本地 MC 读到响应数据，大小: " << bytes_transferred << " 字节，正在回传..." << std::endl;
                     ikcp_send(kcp_, tcp_read_buf_.data(), bytes_transferred);
                     ikcp_flush(kcp_);
                     start_read_tcp();
@@ -147,7 +148,7 @@ private:
     }
 
     bool is_tcp_connected_ = false;
-    std::vector<std::vector<char>> pending_packets_; // 缓存连接建立前的首
+    std::vector<std::vector<char>> pending_packets_; // 缓存连接建立前
 
     boost::asio::io_context& io_context_;
     udp::endpoint client_endpoint_;

@@ -70,7 +70,7 @@ void PlayerSession::handle_incoming_p2p(const char* data, std::size_t size)
 
         if (!is_tcp_connected_) 
         {
-            // 如果 TCP 还没握手成功，先缓存起来！
+            // 如果 TCP 还没握手成功，先缓存起来
             pending_packets_.emplace_back(kcp_buf, kcp_buf + hr);
         }
         else
